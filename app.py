@@ -1,11 +1,10 @@
-
-from dotenv import load_dotenv
-load_dotenv()
 from flask import Flask, render_template, request, redirect
 import sqlite3
 import os
 from flask_mail import Mail, Message
+from dotenv import load_dotenv
 
+load_dotenv()
 app = Flask(__name__)
 DB_FILE = "database.db"
 
