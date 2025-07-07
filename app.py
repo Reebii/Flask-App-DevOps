@@ -1,9 +1,22 @@
+
+from dotenv import load_dotenv
+load_dotenv()
 from flask import Flask, render_template, request, redirect
 import sqlite3
 import os
+from flask_mail import Mail, Message
 
 app = Flask(__name__)
 DB_FILE = "database.db"
+
+# ----- Flask-Mail Config -----
+app.config['MAIL_SERVER'] = 'smtp.gmail.com'
+app.config['MAIL_PORT'] = 587
+app.config['MAIL_USE_TLS'] = True
+app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')  # your_email@gmail.com
+app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')  # your App Password
+
+mail = Mail(app)
 
 def init_db():
     if not os.path.exists(DB_FILE):
@@ -31,6 +44,7 @@ def contact():
         email = request.form["email"]
         message = request.form["message"]
 
+        # Save to DB
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
         c.execute("INSERT INTO contacts (name, email, message) VALUES (?, ?, ?)",
@@ -38,8 +52,30 @@ def contact():
         conn.commit()
         conn.close()
 
+        # Send Email Notification
+        try:
+            msg = Message(
+                subject="📩 New Contact Submission",
+                sender=app.config['MAIL_USERNAME'],
+                recipients=[app.config['MAIL_USERNAME']],  # send to yourself
+                body=f"New message from:\n\nName: {name}\nEmail: {email}\n\nMessage:\n{message}"
+            )
+            mail.send(msg)
+        except Exception as e:
+            print("Email not sent:", e)
+
         return redirect("/thankyou")
+
     return render_template("contact.html")
+
+@app.route('/admin/messages')
+def view_messages():
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT name, email, message FROM contacts ORDER BY id DESC")
+    messages = c.fetchall()
+    conn.close()
+    return render_template("messages.html", messages=messages)
 
 @app.route('/thankyou')
 def thank_you():
