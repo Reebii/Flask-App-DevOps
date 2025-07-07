@@ -14,7 +14,7 @@ app.config['MAIL_PORT'] = 587
 app.config['MAIL_USE_TLS'] = True
 app.config['MAIL_USERNAME'] = os.environ.get('MAIL_USERNAME')  # your_email@gmail.com
 app.config['MAIL_PASSWORD'] = os.environ.get('MAIL_PASSWORD')  # your App Password
-app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME')  # ensures sender is defined
+app.config['MAIL_DEFAULT_SENDER'] = os.environ.get('MAIL_USERNAME')
 
 mail = Mail(app)
 
@@ -52,34 +52,38 @@ def contact():
         conn.commit()
         conn.close()
 
-        # Send Email Notification
+        # Send Email Notification to Admin
         try:
             msg = Message(
                 subject="📩 New Contact Submission",
-                recipients=[app.config['MAIL_USERNAME']],  # send to yourself
+                recipients=[app.config['MAIL_USERNAME']],
                 body=f"New message from:\n\nName: {name}\nEmail: {email}\n\nMessage:\n{message}"
             )
             mail.send(msg)
-            print(f"✅ Email sent to: {app.config['MAIL_USERNAME']}")
+            print(f"✅ Admin email sent to: {app.config['MAIL_USERNAME']}")
         except Exception as e:
-            print("❌ Email not sent:", e)
+            print("❌ Admin email not sent:", e)
+
+        # Auto-reply to User
+        try:
+            user_msg = Message(
+                subject="✅ We received your message!",
+                recipients=[email],
+                body=f"Hi {name},\n\nThanks for contacting us! We'll get back to you shortly.\n\nYour message:\n{message}\n\nBest regards,\nYour Website Team"
+            )
+            mail.send(user_msg)
+            print(f"📬 Auto-reply sent to: {email}")
+        except Exception as e:
+            print("❌ Auto-reply failed:", e)
 
         return redirect("/thankyou")
 
     return render_template("contact.html")
 
-@app.route('/admin/messages')
-def view_messages():
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT name, email, message FROM contacts ORDER BY id DESC")
-    messages = c.fetchall()
-    conn.close()
-    return render_template("messages.html", messages=messages)
-
 @app.route('/thankyou')
 def thank_you():
-    return "<h2>Thank you for contacting me!</h2>"
+    return render_template("thankyou.html")
+
 
 if __name__ == '__main__':
     init_db()
